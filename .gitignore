@@ -41,3 +41,7 @@
 **/local/
 Manifest.toml
 map
+
+build
+build_lacam
+

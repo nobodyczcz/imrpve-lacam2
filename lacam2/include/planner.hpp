@@ -9,8 +9,11 @@
 #include "instance.hpp"
 #include "utils.hpp"
 
+#include <heuristics.hpp>
+
+
 // objective function
-enum Objective { OBJ_NONE, OBJ_MAKESPAN, OBJ_SUM_OF_LOSS };
+enum Objective { OBJ_NONE, OBJ_MAKESPAN, OBJ_SUM_OF_LOSS, OBJ_SUM_OF_COST };
 std::ostream& operator<<(std::ostream& os, const Objective objective);
 
 // PIBT agent
@@ -89,7 +92,7 @@ struct Planner {
   void expand_lowlevel_tree(HNode* H, LNode* L);
   void rewrite(HNode* H_from, HNode* T, HNode* H_goal,
                std::stack<HNode*>& OPEN);
-  uint get_edge_cost(const Config& C1, const Config& C2);
+  uint get_edge_cost(HNode* H_from, const Config& C1, const Config& C2);
   uint get_edge_cost(HNode* H_from, HNode* H_to);
   uint get_h_value(const Config& C);
   bool get_new_config(HNode* H, LNode* L);

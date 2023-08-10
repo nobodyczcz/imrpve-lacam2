@@ -82,6 +82,10 @@ Planner::Planner(const Instance* _ins, const Deadline* _deadline,
       occupied_now(V_size, nullptr),
       occupied_next(V_size, nullptr)
 {
+#ifdef GUIDANCE
+  D.setup_guidance(_ins);
+  solver_info(1, "Guidance Setup");
+#endif
 }
 
 Planner::~Planner() {}
@@ -158,7 +162,7 @@ Solution Planner::solve(std::string& additional_info)
     } else {
       // insert new search node
       const auto H_new = new HNode(
-          C_new, D, H, H->g + get_edge_cost(H->C, C_new), get_h_value(C_new));
+          C_new, D, H, H->g + get_edge_cost(H, H->C, C_new), get_h_value(C_new));
       EXPLORED[H_new->C] = H_new;
       if (H_goal == nullptr || H_new->f < H_goal->f) OPEN.push(H_new);
     }
@@ -211,7 +215,7 @@ void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
     auto n_from = Q.front();
     Q.pop();
     for (auto n_to : n_from->neighbor) {
-      auto g_val = n_from->g + get_edge_cost(n_from->C, n_to->C);
+      auto g_val = n_from->g + get_edge_cost(n_from, n_from->C, n_to->C);
       if (g_val < n_to->g) {
         if (n_to == H_goal)
           solver_info(1, "cost update: ", n_to->g, " -> ", g_val);
@@ -225,7 +229,7 @@ void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
   }
 }
 
-uint Planner::get_edge_cost(const Config& C1, const Config& C2)
+uint Planner::get_edge_cost(HNode* H_from, const Config& C1, const Config& C2)
 {
   if (objective == OBJ_SUM_OF_LOSS) {
     uint cost = 0;
@@ -236,6 +240,24 @@ uint Planner::get_edge_cost(const Config& C1, const Config& C2)
     }
     return cost;
   }
+  else if (objective == OBJ_SUM_OF_COST){
+    uint cost = 0;
+    for (uint i = 0; i < N; ++i) {
+      if (C1[i] != ins->goals[i] || C2[i] != ins->goals[i]) {
+        cost += 1;
+      }
+      uint ex_cost = 0;
+      if (H_from!= nullptr && C1[i] == ins->goals[i] && C2[i] != ins->goals[i]){
+        HNode* curr= H_from;
+        while (curr->parent != nullptr && curr->parent->C[i] == ins->goals[i]){
+          ex_cost += 1;
+          curr = curr->parent;
+        }
+      }
+      cost += ex_cost;
+    }
+    return cost;
+  }
 
   // default: makespan
   return 1;
@@ -243,7 +265,7 @@ uint Planner::get_edge_cost(const Config& C1, const Config& C2)
 
 uint Planner::get_edge_cost(HNode* H_from, HNode* H_to)
 {
-  return get_edge_cost(H_from->C, H_to->C);
+  return get_edge_cost(H_from, H_from->C, H_to->C);
 }
 
 uint Planner::get_h_value(const Config& C)
@@ -251,7 +273,7 @@ uint Planner::get_h_value(const Config& C)
   uint cost = 0;
   if (objective == OBJ_MAKESPAN) {
     for (auto i = 0; i < N; ++i) cost = std::max(cost, D.get(i, C[i]));
-  } else if (objective == OBJ_SUM_OF_LOSS) {
+  } else if (objective == OBJ_SUM_OF_LOSS || objective == OBJ_SUM_OF_COST) {
     for (auto i = 0; i < N; ++i) cost += D.get(i, C[i]);
   }
   return cost;
@@ -306,6 +328,7 @@ bool Planner::get_new_config(HNode* H, LNode* L)
   }
 
   // perform PIBT
+  // std::cout<<"Start PIBT -------"<<std::endl;
   for (auto k : H->order) {
     auto a = A[k];
     if (a->v_next == nullptr && !funcPIBT(a)) return false;  // planning failure
@@ -328,15 +351,39 @@ bool Planner::funcPIBT(Agent* ai)
   C_next[i][K] = ai->v_now;
 
   // sort
+#ifdef GUIDANCE
+
+std::sort(C_next[i].begin(), C_next[i].begin() + K + 1,
+            [&](Vertex* const v, Vertex* const u) {
+              // std::cout<<"v "<<v->index<<" "<<D.get_g(i, v) <<", u "<<u->index<< " "<<D.get_g(i, u)<<std::endl;
+              return D.get_g(i, v) + tie_breakers[v->id] <
+                     D.get_g(i, u) + tie_breakers[u->id];
+            });
+
+#else
   std::sort(C_next[i].begin(), C_next[i].begin() + K + 1,
             [&](Vertex* const v, Vertex* const u) {
               return D.get(i, v) + tie_breakers[v->id] <
                      D.get(i, u) + tie_breakers[u->id];
             });
+#endif
+
+  // std::cout<<"agent "<<ai->id<<" "<<ai->v_now->index<<" "<<D.get_g(i, ai->v_now) <<" "<< ins->goals[i]<<std::endl;
+  // int h = 0;
+  // for(auto k = 0; k < K + 1; ++k){
+
+  //   std::cout<<C_next[i][k]->index<<" "<<D.get(i, C_next[i][k])<<std::endl;
+  //   if (D.get_g(i, C_next[i][k]) < h){
+  //     exit(1);
+  //   }
+  //   h = D.get_g(i, C_next[i][k]);
+  // }
 
   Agent* swap_agent = swap_possible_and_required(ai);
-  if (swap_agent != nullptr)
+  if (swap_agent != nullptr){
     std::reverse(C_next[i].begin(), C_next[i].begin() + K + 1);
+  }
+
 
   // main operation
   for (auto k = 0; k < K + 1; ++k) {
@@ -408,7 +455,12 @@ bool Planner::is_swap_required(const uint pusher, const uint puller,
   auto v_pusher = v_pusher_origin;
   auto v_puller = v_puller_origin;
   Vertex* tmp = nullptr;
+#ifdef GUIDANCE
+  while (D.get_g(pusher, v_puller) < D.get_g(pusher, v_pusher)) {
+
+#else
   while (D.get(pusher, v_puller) < D.get(pusher, v_pusher)) {
+#endif
     auto n = v_puller->neighbor.size();
     // remove agents who need not to move
     for (auto u : v_puller->neighbor) {
@@ -427,9 +479,17 @@ bool Planner::is_swap_required(const uint pusher, const uint puller,
   }
 
   // judge based on distance
+#ifdef GUIDANCE
+  return (D.get_g(puller, v_pusher) < D.get_g(puller, v_puller)) &&
+         (D.get_g(pusher, v_pusher) == 0 ||
+          D.get_g(pusher, v_puller) < D.get_g(pusher, v_pusher));
+
+#else
   return (D.get(puller, v_pusher) < D.get(puller, v_puller)) &&
          (D.get(pusher, v_pusher) == 0 ||
           D.get(pusher, v_puller) < D.get(pusher, v_pusher));
+#endif
+  
 }
 
 // simulate whether the swap is possible
@@ -465,6 +525,9 @@ std::ostream& operator<<(std::ostream& os, const Objective obj)
     os << "makespan";
   } else if (obj == OBJ_SUM_OF_LOSS) {
     os << "sum_of_loss";
+  }
+  else if (obj == OBJ_SUM_OF_COST) {
+    os << "sum_of_cost";
   }
   return os;
 }

@@ -20,6 +20,7 @@ static const std::regex r_map = std::regex(R"(map)");
 
 Graph::Graph(const std::string& filename) : V(Vertices()), width(0), height(0)
 {
+  this->filename = filename;
   std::ifstream file(filename);
   if (!file) {
     std::cout << "file " << filename << " is not found." << std::endl;

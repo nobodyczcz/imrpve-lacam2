@@ -19,6 +19,7 @@ struct Graph {
   Vertices U;                          // with nullptr
   uint width;                          // grid width
   uint height;                         // grid height
+  std::string filename;                // map filename
   Graph();
   Graph(const std::string& filename);  // taking map filename
   ~Graph();
