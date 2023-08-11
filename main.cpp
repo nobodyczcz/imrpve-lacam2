@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
   const auto output_name = program.get<std::string>("output");
   const auto log_short = program.get<bool>("log_short");
   const auto N = std::stoi(program.get<std::string>("num"));
-  const auto ins = scen_name.size() > 0 ? Instance(scen_name, map_name, N)
+  const auto ins = scen_name.size() > 0 ? Instance(scen_name, map_name, &MT, N)
                                         : Instance(map_name, &MT, N);
   const auto objective =
       static_cast<Objective>(std::stoi(program.get<std::string>("objective")));

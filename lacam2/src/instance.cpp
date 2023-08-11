@@ -17,13 +17,21 @@ static const std::regex r_instance =
     std::regex(R"(\d+\t.+\.map\t\d+\t\d+\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t.+)");
 
 Instance::Instance(const std::string& scen_filename,
-                   const std::string& map_filename, const uint _N)
-    : G(Graph(map_filename)), starts(Config()), goals(Config()), N(_N)
+                   const std::string& map_filename,std::mt19937* MT, const uint _N)
+    : G(Graph(map_filename)), starts(Config()), goals(Config()), N(_N),MT(MT)
 {
   // load start-goal pairs
   std::ifstream file(scen_filename);
   if (!file) {
-    info(0, 0, scen_filename, " is not found");
+    info(0, 0, scen_filename, " is not found, generate instance");
+    random_agents();
+    std::ofstream myfile;
+    myfile.open (scen_filename);
+    myfile <<"version 1\n";
+    for(int i = 0; i < N; i++){
+      myfile << i << "\t" << map_filename <<"\t"<<G.width<< "\t"<<G.height << "\t" << starts[i]->index%G.width << "\t" << starts[i]->index/G.width << "\t" << goals[i]->index%G.width << "\t" << goals[i]->index/G.width << "\t" << 0 << "\n";
+    }
+    myfile.close();
     return;
   }
   std::string line;
@@ -53,8 +61,13 @@ Instance::Instance(const std::string& scen_filename,
 
 Instance::Instance(const std::string& map_filename, std::mt19937* MT,
                    const uint _N)
-    : G(Graph(map_filename)), starts(Config()), goals(Config()), N(_N)
+    : G(Graph(map_filename)), starts(Config()), goals(Config()), N(_N),MT(MT)
 {
+
+  random_agents();
+}
+
+void Instance::random_agents(){
   // random assignment
   const auto V_size = G.size();
 
