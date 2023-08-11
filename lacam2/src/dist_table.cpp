@@ -28,16 +28,21 @@ void DistTable::setup(const Instance* ins)
 
 }
 
-void DistTable::setup_guidance(const Instance* ins)
+void DistTable::setup_guidance(const Instance* ins, int t_ms)
 {
   std::srand(0);
   guidance_ready = true;
 
   env.load_map(ins->G.filename);
   env.num_of_agents = ins->N;
+  auto start_time = std::chrono::steady_clock::now();
+
 
   lns = TrafficMAPF::TrajLNS(&env);
   lns.init_mem();
+  lns.start_time = start_time;
+  lns.t_ms = t_ms;
+
 
   traffic.resize(env.map.size(),-1);
 
@@ -50,7 +55,6 @@ void DistTable::setup_guidance(const Instance* ins)
   }
 
 #ifdef GUIDANCE
-  auto start_time = std::chrono::steady_clock::now();
 #ifdef INIT_PP
         init_traj(lns, traffic, MAX_TIMESTEP);
 #else
@@ -81,6 +85,9 @@ void DistTable::setup_guidance(const Instance* ins)
 #else
 
   for (int i = 0; i < env.num_of_agents; i++){
+    if (lns.t_ms !=0 && i%100 ==0 && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - lns.start_time).count() >lns.t_ms){
+            break;
+    }
     int goal_loc = lns.tasks[i];
     init_flow_heuristic(lns, traffic, i);
 

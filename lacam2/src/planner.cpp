@@ -83,7 +83,7 @@ Planner::Planner(const Instance* _ins, const Deadline* _deadline,
       occupied_next(V_size, nullptr)
 {
 #ifdef GUIDANCE
-  D.setup_guidance(_ins);
+  D.setup_guidance(_ins,deadline->time_limit_ms);
   solver_info(1, "Guidance Setup");
 #endif
 }

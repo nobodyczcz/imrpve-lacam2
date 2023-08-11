@@ -35,5 +35,5 @@ struct DistTable {
   bool guidance_ready = false;
 
   void setup(const Instance* ins);  // initialization
-  void setup_guidance(const Instance* ins);
+  void setup_guidance(const Instance* ins, int t_ms);
 };
