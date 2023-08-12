@@ -41,7 +41,7 @@ void DistTable::setup_guidance(const Instance* ins, int t_ms)
   lns = TrafficMAPF::TrajLNS(&env);
   lns.init_mem();
   lns.start_time = start_time;
-  lns.t_ms = t_ms;
+  lns.t_ms = GUID_T*1000 - 1*(GUID_T/0.005);
 
 
   traffic.resize(env.map.size(),-1);
@@ -59,6 +59,9 @@ void DistTable::setup_guidance(const Instance* ins, int t_ms)
         init_traj(lns, traffic, MAX_TIMESTEP);
 #else
         init_traj_st(lns, traffic);
+  #ifndef FLOW_GUIDANCE
+        init_traj(lns, traffic, MAX_TIMESTEP, true);
+  #endif
 #endif
   std::cout << "---init-t," << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_time).count() <<std::endl;
   std::unordered_set<int> updated;
@@ -129,15 +132,27 @@ uint DistTable::get(uint i, uint v_id)
 }
 
 uint DistTable::get(uint i, Vertex* v) {
-
+#ifdef Guidance
+  return  TrafficMAPF::get_heuristic(lns.heuristics[lns.tasks[i]], lns.env, traffic,lns.flow, v->index);
+#else
   return get(i, v->id); 
+#endif
+
   }
 
 uint DistTable::get_g(uint i, Vertex* v) {
 #ifdef GUIDANCE
   #ifndef FLOW_GUIDANCE
+    if (lns.traj_dists[i].empty()){
+      // return get(i, v->id); 
+      return  TrafficMAPF::get_heuristic(lns.heuristics[lns.tasks[i]], lns.env, traffic,lns.flow, v->index);
+    }
     return TrafficMAPF::get_dist_2_path(lns.traj_dists[i], lns.env, traffic, v->index);
   #else
+  if (lns.flow_heuristics[i].empty()){
+    // return get(i, v->id); 
+      return  TrafficMAPF::get_heuristic(lns.heuristics[lns.tasks[i]], lns.env, traffic,lns.flow, v->index);
+    }
   TrafficMAPF::s_node* s =  TrafficMAPF::get_flow_heuristic(lns.flow_heuristics[i], lns.env, traffic, lns.flow, v->index);
   return s->get_g();
   #endif
@@ -150,8 +165,16 @@ uint DistTable::get_g(uint i, Vertex* v) {
 uint DistTable::get_gd(uint i, Vertex* v) {
 #ifdef GUIDANCE
   #ifndef FLOW_GUIDANCE
+    if (lns.traj_dists[i].empty()){
+      // return get(i, v->id); 
+      return  TrafficMAPF::get_heuristic(lns.heuristics[lns.tasks[i]], lns.env, traffic,lns.flow, v->index);
+    }
     return TrafficMAPF::get_dist_2_path(lns.traj_dists[i], lns.env, traffic, v->index);
   #else
+  if (lns.flow_heuristics[i].empty()){
+    // return get(i, v->id); 
+      return  TrafficMAPF::get_heuristic(lns.heuristics[lns.tasks[i]], lns.env, traffic,lns.flow, v->index);
+    }
   TrafficMAPF::s_node* s =  TrafficMAPF::get_flow_heuristic(lns.flow_heuristics[i], lns.env, traffic, lns.flow, v->index);
   return s->depth;
 #endif
