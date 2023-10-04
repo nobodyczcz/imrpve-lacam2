@@ -7,8 +7,11 @@
 #include "instance.hpp"
 #include "utils.hpp"
 #include <vector>
+
+#ifdef GUIDANCE
 #include <Types.h>
 #include <TrajLNS.h>
+#endif
 
 
 
@@ -26,9 +29,11 @@ struct DistTable {
   DistTable(const Instance& ins);
   DistTable(const Instance* ins);
 
+#ifdef GUIDANCE
   TrafficMAPF::SharedEnvironment env;
 
   TrafficMAPF::TrajLNS lns;
+#endif
 
   std::vector<int> traffic;
 

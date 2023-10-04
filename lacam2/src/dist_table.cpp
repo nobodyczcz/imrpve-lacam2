@@ -1,6 +1,9 @@
 #include "../include/dist_table.hpp"
+
+#ifdef GUIDANCE
 #include <heuristics.hpp>
 #include <flow.hpp>
+#endif
 
 DistTable::DistTable(const Instance& ins)
     : V_size(ins.G.V.size()), table(ins.N, std::vector<uint>(V_size, V_size))
@@ -30,6 +33,8 @@ void DistTable::setup(const Instance* ins)
 
 void DistTable::setup_guidance(const Instance* ins, int t_ms)
 {
+#ifdef GUIDANCE
+
   std::srand(0);
   guidance_ready = true;
 
@@ -54,7 +59,6 @@ void DistTable::setup_guidance(const Instance* ins, int t_ms)
 
   }
 
-#ifdef GUIDANCE
 #ifdef INIT_PP
         init_traj(lns, traffic, MAX_TIMESTEP);
 #else

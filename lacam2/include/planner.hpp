@@ -9,7 +9,9 @@
 #include "instance.hpp"
 #include "utils.hpp"
 
+#ifdef GUIDANCE
 #include <heuristics.hpp>
+#endif
 
 
 // objective function
