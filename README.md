@@ -55,6 +55,13 @@ sum-of-loss optimization:
 solved: 1ms     makespan: 11 (lb=2, ub=5.5)     sum_of_costs: 15 (lb=5, ub=3)   sum_of_loss: 15 (lb=5, ub=3)
 ```
 
+sum-of-cost optimization:
+
+```sh
+> build/main -m assets/loop.map -i assets/loop.scen -N 3 -v 2 --objective 3
+solved: 1ms     makespan: 11 (lb=2, ub=5.5)     sum_of_costs: 15 (lb=5, ub=3)   sum_of_loss: 15 (lb=5, ub=3)
+```
+
 You can find details of all parameters with:
 ```sh
 build/main --help
